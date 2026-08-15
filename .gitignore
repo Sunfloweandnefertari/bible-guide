@@ -1,0 +1,8 @@
+# 密钥：绝不提交
+.env
+
+# 大文件 / 缓存
+*.db
+node_modules/
+.DS_Store
+Thumbs.db

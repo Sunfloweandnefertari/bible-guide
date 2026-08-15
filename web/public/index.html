@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>圣言 · 圣经智慧视角</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="stars"></canvas>
+<div class="lightrays"></div>
+<div class="veil"></div>
+
+<div class="app">
+  <header>
+    <div class="halo">✦</div>
+    <h1>圣 言</h1>
+    <p class="en">SACRED WORD</p>
+    <p class="tagline">用圣经的智慧，看人生的难处</p>
+    <div class="pill">仅供参考 · 不支持迷信 · 不替代专业帮助</div>
+  </header>
+
+  <section class="verse-day" id="verse-day">
+    <div class="k">— 今日经文 —</div>
+    <p class="v" id="vd-text">“耶和华是我的牧者，我必不至缺乏。”</p>
+    <p class="r" id="vd-ref">诗篇 23:1</p>
+    <button class="swap" id="vd-switch" title="换一节">✦</button>
+  </section>
+
+  <section class="chat" id="chat" aria-live="polite"></section>
+
+  <form class="bar" id="bar" autocomplete="off">
+    <div class="versetool" id="versetool">
+      <div class="vt-row">
+        <input id="vq" placeholder="查经 · 如：诗篇 23:1-6　或关键词：饶恕" spellcheck="false">
+        <button type="button" class="vt-btn" id="vbtn">查经</button>
+      </div>
+      <div class="vres" id="vres"></div>
+    </div>
+    <div class="inputrow">
+      <textarea id="inp" rows="1" placeholder="说出你的困惑…" spellcheck="false"></textarea>
+      <button class="send" id="send" title="发送">✦</button>
+    </div>
+  </form>
+
+  <footer>
+    和合本经文 · 基于开源数据蒸馏<br>
+    <span class="hot">心理援助热线 400-161-9995</span> · 危急时刻请优先求助专业人士
+  </footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
