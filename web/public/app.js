@@ -1,32 +1,38 @@
-/* 圣言 · 圣经智慧视角 —— 前端逻辑 */
+/* 圣言 · 圣经智慧视角 —— 前端逻辑 v2 */
 (() => {
   'use strict';
 
-  /* ========== 星夜画布 ========== */
-  const cvs = document.getElementById('stars');
+  const ACCESS_KEY = 'bible_access_code';
+
+  /* ========== 晨光浮尘 ========== */
+  const cvs = document.getElementById('motes');
   const ctx = cvs.getContext('2d');
-  let stars = [];
+  let motes = [];
   function resize() {
     cvs.width = innerWidth; cvs.height = innerHeight;
-    const n = Math.min(220, Math.floor(innerWidth * innerHeight / 9000));
-    stars = Array.from({ length: n }, () => ({
+    const n = Math.min(160, Math.floor(innerWidth * innerHeight / 12000));
+    motes = Array.from({ length: n }, () => ({
       x: Math.random() * cvs.width,
       y: Math.random() * cvs.height,
-      r: Math.random() * 1.3 + .3,
+      r: Math.random() * 1.6 + .6,
+      vy: -(Math.random() * .22 + .08),   // 缓慢上升
+      vx: (Math.random() - .5) * .15,
       p: Math.random() * Math.PI * 2,
-      s: Math.random() * .012 + .004,
-      g: Math.random() < .18, // 少数金黄色的星
+      a: Math.random() * .5 + .3,
     }));
   }
   resize(); addEventListener('resize', resize);
   function draw() {
     ctx.clearRect(0, 0, cvs.width, cvs.height);
     const t = performance.now() / 1000;
-    for (const st of stars) {
-      const a = .35 + .55 * Math.abs(Math.sin(st.p + t * 1.2 + st.s * 200));
+    for (const m of motes) {
+      m.x += m.vx; m.y += m.vy;
+      if (m.y < -10) { m.y = cvs.height + 10; m.x = Math.random() * cvs.width; }
+      if (m.x < -10) m.x = cvs.width + 10; if (m.x > cvs.width + 10) m.x = -10;
+      const tw = .55 + .45 * Math.sin(m.p + t * 1.4);
       ctx.beginPath();
-      ctx.fillStyle = st.g ? `rgba(232,200,122,${a})` : `rgba(230,235,255,${a})`;
-      ctx.arc(st.x, st.y, st.r, 0, 7);
+      ctx.fillStyle = `rgba(217, 164, 65, ${m.a * tw})`;
+      ctx.arc(m.x, m.y, m.r, 0, 7);
       ctx.fill();
     }
     requestAnimationFrame(draw);
@@ -55,6 +61,29 @@
   setVerse(vIdx);
   document.getElementById('vd-switch').onclick = () => setVerse(++vIdx);
 
+  /* ========== 访问码 ========== */
+  const overlay = document.getElementById('access-overlay');
+  const aInput = document.getElementById('access-input');
+  const aErr = document.getElementById('access-err');
+  function needAccess() { overlay.hidden = false; aInput.focus(); }
+  function gotAccess(code) {
+    overlay.hidden = true;
+    localStorage.setItem(ACCESS_KEY, code);
+  }
+  document.getElementById('access-btn').onclick = tryAccess;
+  aInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryAccess(); });
+  function tryAccess() {
+    const code = aInput.value.trim();
+    if (!code) { aErr.textContent = '请输入访问码'; return; }
+    localStorage.setItem(ACCESS_KEY, code);
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-access-code': code },
+      body: JSON.stringify({ messages: [{ role: 'user', content: '你好' }] }) })
+      .then(r => r.json())
+      .then(j => { if (j.needAccess) { aErr.textContent = '访问码不正确'; localStorage.removeItem(ACCESS_KEY); } else { gotAccess(code); } })
+      .catch(() => gotAccess(code));
+  }
+  const accessCode = () => localStorage.getItem(ACCESS_KEY) || '';
+
   /* ========== 轻量 Markdown 渲染 ========== */
   function esc(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -72,6 +101,7 @@
   const inp = document.getElementById('inp');
   const sendBtn = document.getElementById('send');
   const history = [];
+  let busy = false;
 
   function addMsg(role, text, html) {
     const wrap = document.createElement('div');
@@ -79,8 +109,18 @@
     wrap.innerHTML = `<div class="role">${role === 'assistant' ? '圣言 · 智慧视角' : '你'}</div>` +
       `<div class="bubble">${html || renderInline(text)}</div>`;
     chat.appendChild(wrap);
-    chat.scrollTop = chat.scrollHeight;
+    smoothScroll();
     return wrap;
+  }
+  function addCrisis(note) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg crisis';
+    wrap.innerHTML = `<div class="role">⚠ 请先照顾好自己</div><div class="bubble">${renderInline(note)}</div>`;
+    chat.appendChild(wrap);
+    smoothScroll();
+  }
+  function smoothScroll() {
+    requestAnimationFrame(() => { chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' }); });
   }
   function typing() {
     const w = document.createElement('div');
@@ -88,31 +128,31 @@
     w.id = 'typing-msg';
     w.innerHTML = '<div class="bubble"><span class="typing"><i></i><i></i><i></i></span> 默想中…</div>';
     chat.appendChild(w);
-    chat.scrollTop = chat.scrollHeight;
+    smoothScroll();
   }
-  function typingDone() {
-    const t = document.getElementById('typing-msg');
-    if (t) t.remove();
-  }
+  function typingDone() { const t = document.getElementById('typing-msg'); if (t) t.remove(); }
 
   async function send(userText, opts) {
     const text = (opts && opts.pre) || userText;
-    if (!text.trim() || sendBtn.disabled) return;
+    if (!text.trim() || busy) return;
     addMsg('user', text);
     history.push({ role: 'user', content: text });
-    sendBtn.disabled = true;
+    busy = true; sendBtn.disabled = true;
     typing();
+    const headers = { 'Content-Type': 'application/json' };
+    if (accessCode()) headers['x-access-code'] = accessCode();
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history }),
-      });
+      const res = await fetch('/api/chat', { method: 'POST', headers, body: JSON.stringify({ messages: history }) });
+      if (res.status === 401) {
+        const j = await res.json().catch(() => ({}));
+        typingDone(); busy = false; sendBtn.disabled = false;
+        if (j.needAccess) { needAccess(); return; }
+      }
       if (!res.ok || !res.body) {
         let msg = '请求失败（' + res.status + '），请稍后再试。';
         try { const j = await res.json(); if (j.error) msg = j.error; } catch {}
-        typingDone(); addMsg('assistant', '', `<span style="color:#d98">⚠ ${esc(msg)}</span>`);
-        sendBtn.disabled = false;
+        typingDone(); addMsg('assistant', '', `<span style="color:#c4534f">⚠ ${esc(msg)}</span>`);
+        busy = false; sendBtn.disabled = false;
         return;
       }
       const reader = res.body.getReader();
@@ -132,18 +172,19 @@
           if (data === '[DONE]') continue;
           try {
             const j = JSON.parse(data);
+            if (j.crisis) { addCrisis(j.crisis); continue; }
             if (j.error) {
               typingDone();
               if (bubble) bubble.remove();
-              addMsg('assistant', '', `<span style="color:#d98">⚠ ${esc(j.error)}</span>`);
-              sendBtn.disabled = false;
+              addMsg('assistant', '', `<span style="color:#c4534f">⚠ ${esc(j.error)}</span>`);
+              busy = false; sendBtn.disabled = false;
               return;
             }
             if (j.delta) {
               acc += j.delta;
               if (!bubble) { typingDone(); bubble = addMsg('assistant', ''); }
               bubble.querySelector('.bubble').innerHTML = renderInline(acc);
-              chat.scrollTop = chat.scrollHeight;
+              smoothScroll();
             }
           } catch {}
         }
@@ -151,11 +192,11 @@
       typingDone();
       if (!bubble && !acc) addMsg('assistant', '（没有收到回复，请再试一次）');
       history.push({ role: 'assistant', content: acc });
-      sendBtn.disabled = false;
+      busy = false; sendBtn.disabled = false;
     } catch (e) {
       typingDone();
-      addMsg('assistant', '', `<span style="color:#d98">⚠ 网络异常：${esc(e.message)}</span>`);
-      sendBtn.disabled = false;
+      addMsg('assistant', '', `<span style="color:#c4534f">⚠ 网络异常：${esc(e.message)}</span>`);
+      busy = false; sendBtn.disabled = false;
     }
   }
 
@@ -195,8 +236,7 @@
   function item(book, tx) {
     const m = tx.match(/^(\d+:\d+(?:-\d+)?)\s*/);
     const ref = book + (m ? ' ' + m[1] : '');
-    const text = tx;
-    return `<div class="item" data-tx="${esc(text)}"><div class="rf">${esc(ref)}</div><div class="tx">${esc(text)}</div></div>`;
+    return `<div class="item" data-tx="${esc(tx)}"><div class="rf">${esc(ref)}</div><div class="tx">${esc(tx)}</div></div>`;
   }
   vbtn.onclick = lookup;
   vq.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); lookup(); } });

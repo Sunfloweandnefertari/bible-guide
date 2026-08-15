@@ -56,11 +56,18 @@ node E:/Bible/data/查经.js --书卷         # 列出 66 卷
 
 一个「神性」风格的网页聊天界面，由 DeepSeek API 驱动，密钥只在服务端，支持流式回复与实时查经。
 
+**v2 特性**
+- ✨ **自动查经**：助手通过函数调用自动检索圣经原文，引用零编造
+- 🛡 **危机检测**：检测自杀/自伤/家暴等信号，强制插入心理援助热线（400-161-9995）
+- 🔐 **访问码**：设置 `ACCESS_CODE` 后需输入访问码才能对话，防陌生人白嫖
+- ☀️ **明亮界面**：破晓晨光 × 鎏金 × 圣光，浮尘动画，移动端适配
+- 🔄 **不崩部署**：未配置 API Key 服务照跑，页面友好提示
+
 ```
 web/
-├── server.js              # 零依赖 Node 服务器：静态托管 + 聊天代理 + 查经接口
-├── context/system-prompt.md  # 为聊天精简的蒸馏提示词
-├── public/                # 神性风格前端（深空星夜 × 圣光 × 鎏金）
+├── server.js              # 零依赖 Node 服务器：静态托管 + 聊天代理（含函数调用）+ 查经接口
+├── context/system-prompt.md  # 为聊天精简的蒸馏提示词（含 search_verse 工具说明）
+├── public/                # 神性风格前端（破晓晨光 × 鎏金 × 圣光）
 └── .env.example           # 密钥模板（.env 已被 gitignore，绝不提交）
 ```
 
@@ -70,6 +77,13 @@ cd web
 cp .env.example .env        # 填入你的 DeepSeek API Key
 node server.js
 # 打开 http://localhost:8787
+```
+
+**可选环境变量**
+```bash
+ACCESS_CODE=你的访问码   # 设置后需访问码才能对话
+RATE_PER_MIN=20          # 每 IP 每分钟限流次数（默认 20）
+DEEPSEEK_MODEL=deepseek-chat
 ```
 
 **在线部署（任一平台）**

@@ -7,9 +7,21 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<canvas id="stars"></canvas>
+<canvas id="motes"></canvas>
 <div class="lightrays"></div>
 <div class="veil"></div>
+
+<!-- 访问码层 -->
+<div class="overlay" id="access-overlay" hidden>
+  <div class="overlay-card">
+    <div class="halo small">✦</div>
+    <h2>圣 言</h2>
+    <p class="ov-sub">请输入访问码以继续</p>
+    <input id="access-input" type="password" placeholder="访问码" autocomplete="off">
+    <button id="access-btn">进入</button>
+    <p class="ov-err" id="access-err"></p>
+  </div>
+</div>
 
 <div class="app">
   <header>
