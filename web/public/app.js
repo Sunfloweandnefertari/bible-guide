@@ -244,14 +244,27 @@
     '我用圣经的智慧视角陪你聊聊。\n\n你可以说说正在经历的难处，或问我某个困惑 —— 爱、饶恕、苦难、焦虑、方向…都可以。\n\n*仅供你参考，你也可以完全保留自己的判断。*');
 
   /* ========== 启动自检：让页面自己说出状态 ========== */
+  const statusEl = document.getElementById('status');
+  function renderStatus(cfg) {
+    if (!statusEl) return;
+    statusEl.innerHTML =
+      `<span class="sdot ${cfg.keyConfigured ? 'ok' : 'bad'}"></span>API ${cfg.keyConfigured ? '已配置' : '未配置'}` +
+      `<span class="sep">·</span>` +
+      `<span class="sdot ${cfg.needAccess ? 'ok' : 'off'}"></span>访问码 ${cfg.needAccess ? '已启用' : '未启用'}`;
+  }
   (async function boot() {
     try {
       const r = await fetch('/api/config');
       const cfg = await r.json();
+      renderStatus(cfg);
       if (cfg.needAccess) {
         /* 需要访问码：主动弹出，避免等 401 */
         if (!accessCode()) needAccess();
-      } else if (!cfg.keyConfigured) {
+      } else {
+        overlay.hidden = true; /* 服务明确不需要访问码时，强制关掉弹窗 */
+        aErr.textContent = '';
+      }
+      if (!cfg.keyConfigured) {
         addMsg('assistant', '',
           '<span style="color:#c4534f">⚠ 服务尚未配置 DeepSeek API Key —— 管理员需在部署平台设置环境变量 <code>DEEPSEEK_API_KEY</code> 后重新部署，聊天才能使用。</span>');
       }

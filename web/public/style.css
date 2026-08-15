@@ -307,6 +307,23 @@ h1 {
 #access-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
 .ov-err { color: #c4534f; font-size: 12.5px; margin-top: 10px; min-height: 16px; }
 
+/* ---------- 服务状态角标 ---------- */
+.status {
+  position: fixed; right: 14px; top: 12px; z-index: 10;
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  background: rgba(255, 253, 247, .8);
+  border: 1px solid rgba(190, 145, 50, .3);
+  font-size: 11px; color: var(--dim); letter-spacing: .04em;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(150, 110, 40, .1);
+}
+.status .sep { opacity: .5; }
+.sdot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.sdot.ok { background: #4caf50; box-shadow: 0 0 6px rgba(76,175,80,.6); }
+.sdot.bad { background: #e53935; box-shadow: 0 0 6px rgba(229,57,53,.6); }
+.sdot.off { background: #b0a583; }
+
 /* ---------- 页脚 ---------- */
 footer {
   margin-top: 22px; text-align: center;
