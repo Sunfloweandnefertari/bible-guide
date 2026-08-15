@@ -276,6 +276,8 @@ h1 {
 .overlay {
   position: fixed; inset: 0; z-index: 50;
   display: grid; place-items: center;
+}
+.overlay[hidden] { display: none !important; }
   background: radial-gradient(90% 70% at 50% 20%, rgba(255, 240, 205, .96), rgba(240, 224, 191, .92));
   backdrop-filter: blur(8px);
 }
