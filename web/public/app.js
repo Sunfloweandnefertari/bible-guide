@@ -70,18 +70,9 @@
     overlay.hidden = true;
     localStorage.setItem(ACCESS_KEY, code);
   }
+  let accessFails = 0;
   document.getElementById('access-btn').onclick = tryAccess;
   aInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryAccess(); });
-  function tryAccess() {
-    const code = aInput.value.trim();
-    if (!code) { aErr.textContent = '请输入访问码'; return; }
-    localStorage.setItem(ACCESS_KEY, code);
-    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-access-code': code },
-      body: JSON.stringify({ messages: [{ role: 'user', content: '你好' }] }) })
-      .then(r => r.json())
-      .then(j => { if (j.needAccess) { aErr.textContent = '访问码不正确'; localStorage.removeItem(ACCESS_KEY); } else { gotAccess(code); } })
-      .catch(() => gotAccess(code));
-  }
   const accessCode = () => localStorage.getItem(ACCESS_KEY) || '';
 
   /* ========== 轻量 Markdown 渲染 ========== */
@@ -251,4 +242,40 @@
   /* ========== 开场白 ========== */
   addMsg('assistant',
     '我用圣经的智慧视角陪你聊聊。\n\n你可以说说正在经历的难处，或问我某个困惑 —— 爱、饶恕、苦难、焦虑、方向…都可以。\n\n*仅供你参考，你也可以完全保留自己的判断。*');
+
+  /* ========== 启动自检：让页面自己说出状态 ========== */
+  (async function boot() {
+    try {
+      const r = await fetch('/api/config');
+      const cfg = await r.json();
+      if (cfg.needAccess) {
+        /* 需要访问码：主动弹出，避免等 401 */
+        if (!accessCode()) needAccess();
+      } else if (!cfg.keyConfigured) {
+        addMsg('assistant', '',
+          '<span style="color:#c4534f">⚠ 服务尚未配置 DeepSeek API Key —— 管理员需在部署平台设置环境变量 <code>DEEPSEEK_API_KEY</code> 后重新部署，聊天才能使用。</span>');
+      }
+    } catch {}
+  })();
+
+  function tryAccess() {
+    const code = aInput.value.trim();
+    if (!code) { aErr.textContent = '请输入访问码'; return; }
+    localStorage.setItem(ACCESS_KEY, code);
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-access-code': code },
+      body: JSON.stringify({ messages: [{ role: 'user', content: '你好' }] }) })
+      .then(r => r.json())
+      .then(j => {
+        if (j.needAccess) {
+          accessFails++;
+          aErr.textContent = accessFails >= 2
+            ? '访问码不正确。访问码由网站管理员在部署时设置（环境变量 ACCESS_CODE），请联系管理员获取。'
+            : '访问码不正确';
+          localStorage.removeItem(ACCESS_KEY);
+        } else {
+          gotAccess(code);
+        }
+      })
+      .catch(() => gotAccess(code));
+  }
 })();

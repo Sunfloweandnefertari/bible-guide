@@ -264,11 +264,18 @@ function verseAPI(req, res) {
   res.end(JSON.stringify(searchBible(q)));
 }
 
+/* ---------- 配置接口（让页面自报状态） ---------- */
+function configAPI(req, res) {
+  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify({ keyConfigured: !!KEY, needAccess: !!ACCESS_CODE }));
+}
+
 /* ---------- 启动 ---------- */
 const server = http.createServer((req, res) => {
   try {
     if (req.url.startsWith('/api/chat')) return chat(req, res);
     if (req.url.startsWith('/api/verse')) return verseAPI(req, res);
+    if (req.url.startsWith('/api/config')) return configAPI(req, res);
     if (req.method === 'GET') return serveStatic(req, res);
     res.writeHead(405); res.end();
   } catch (e) {
