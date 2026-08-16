@@ -204,7 +204,16 @@
   /* ========== 查经工具 ========== */
   const vq = document.getElementById('vq');
   const vbtn = document.getElementById('vbtn');
+  const vclear = document.getElementById('vclear');
   const vres = document.getElementById('vres');
+  function syncClear() { vclear.hidden = vq.value.trim() === ''; }
+  function clearVerse() {
+    vq.value = '';
+    vres.classList.remove('show');
+    vres.innerHTML = '';
+    syncClear();
+    vq.focus();
+  }
   async function lookup() {
     const q = vq.value.trim();
     if (!q) return;
@@ -230,12 +239,15 @@
     return `<div class="item" data-tx="${esc(tx)}"><div class="rf">${esc(ref)}</div><div class="tx">${esc(tx)}</div></div>`;
   }
   vbtn.onclick = lookup;
+  vclear.onclick = clearVerse;
+  vq.addEventListener('input', syncClear);
   vq.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); lookup(); } });
   vres.addEventListener('click', e => {
     const it = e.target.closest('.item');
     if (!it) return;
     const tx = it.dataset.tx;
     vres.classList.remove('show'); vq.value = '';
+    syncClear();
     send('', { pre: '请引用这段经文并结合它回答：' + tx });
   });
 
