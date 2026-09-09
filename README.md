@@ -26,6 +26,7 @@ E:\Bible\
     │   ├── wlc.json          # Westminster Leningrad Codex（希伯来文原文·旧约 39 卷）
     │   └── tr.json           # Textus Receptus（希腊文原文·新约 27 卷）
     ├── build-versions.js     # 多译本构建脚本：归一化各来源 → versions/
+    ├── verify-versions.js    # 多译本自检：校验完整性/编号对齐/抽查经文
     ├── 查经.js               # 多译本查经工具（见下）
     └── 关键经文清单.txt       # 蒸馏时抽取的 56 节关键经文
 ```
@@ -94,20 +95,25 @@ web/
 ```bash
 cd web
 cp .env.example .env        # 填入你的 DeepSeek API Key
-node server.js
+node server.js              # 或从仓库根目录：npm start
 # 打开 http://localhost:8787
 ```
+
+> 多译本数据在 `data/versions/`（服务端自动向上查找 `../data/versions`），
+> 从仓库根目录 `npm start` 可确保经文数据被正确加载。
 
 **可选环境变量**
 ```bash
 ACCESS_CODE=你的访问码   # 设置后需访问码才能对话
 RATE_PER_MIN=20          # 每 IP 每分钟限流次数（默认 20）
 DEEPSEEK_MODEL=deepseek-chat
+PORT=8787
 ```
 
 **在线部署（任一平台）**
-- **Render**（推荐，免费）：新建 Web Service → 根目录选 `web/` → Build Command 留空 → Start Command `node server.js` → 环境变量填 `DEEPSEEK_API_KEY`
-- **Railway / Fly.io / 任意 VPS**：同上，把 `web/` 部署为 Node 服务
+- **Render**（推荐，免费）：新建 Web Service → **根目录留空（仓库根）** → Build Command 留空 → Start Command `npm start`（即 `node web/server.js`）→ 环境变量填 `DEEPSEEK_API_KEY`
+  - ⚠️ 根目录要选**仓库根**，不要选 `web/`——否则 `data/versions/` 不在部署内，经文会加载不到
+- **Railway / Fly.io / 任意 VPS**：同上，从仓库根启动 `node web/server.js`
 - ⚠️ **密钥只在服务端**：前端页面不含任何密钥；部署时用平台环境变量，别写进代码
 
 **查经 API**（网页内置，也可直接调用）
