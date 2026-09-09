@@ -18,9 +18,15 @@ E:\Bible\
 │   ├── 04-表达与文体风格.md   # 八种文体规则 + 四种回应语气 + 禁语
 │   ├── 05-应用守则与边界.md   # 安全红线 + 危机识别与转介
 │   └── 06-保真度与自检.md     # 出厂质检评分卡 + 日常快速自检（防跑偏）
-└── data/                     # 和合本全文（神版）
-    ├── bible_cuv.json        # 66 卷 31,103 节结构化全文
-    ├── 查经.js               # 查经工具：node 查经.js 诗篇 23:1-6 / --搜索 饶恕
+└── data/                     # 经文数据与工具
+    ├── bible_cuv.json        # 和合本（神版）66 卷 31,103 节
+    ├── versions/             # 多译本（归一化，按书卷编号 1-66 对齐）
+    │   ├── cuv.json          # 和合本（中文）
+    │   ├── kjv.json          # King James Version（英文）
+    │   ├── wlc.json          # Westminster Leningrad Codex（希伯来文原文·旧约 39 卷）
+    │   └── tr.json           # Textus Receptus（希腊文原文·新约 27 卷）
+    ├── build-versions.js     # 多译本构建脚本：归一化各来源 → versions/
+    ├── 查经.js               # 多译本查经工具（见下）
     └── 关键经文清单.txt       # 蒸馏时抽取的 56 节关键经文
 ```
 
@@ -46,22 +52,34 @@ cp E:/Bible/agents/bible-guide.md ~/.claude/agents/
 
 **方式二 · 用 Agent**：在对话里说「让 bible-guide 从圣经角度分析一下 xxx」。
 
-**方式三 · 只查经文**（不启动任何 Agent）：
+**方式三 · 只查经文**（不启动任何 Agent，支持多译本）：
 ```bash
-node E:/Bible/data/查经.js 诗篇 23:1-6    # 按卷章查
-node E:/Bible/data/查经.js --搜索 饶恕    # 关键词搜索
-node E:/Bible/data/查经.js --书卷         # 列出 66 卷
+node E:/Bible/data/查经.js 诗篇 23:1-6      # 按卷章查（默认和合本）
+node E:/Bible/data/查经.js --搜索 饶恕      # 关键词搜索
+node E:/Bible/data/查经.js --书卷           # 列出 66 卷
+
+node E:/Bible/data/查经.js 诗篇 23:1 --kjv   # 指定译本：英文 KJV
+node E:/Bible/data/查经.js 创世记 1:1 --wlc  # 希伯来文原文（旧约）
+node E:/Bible/data/查经.js 约翰福音 3:16 --tr # 希腊文原文（新约）
+node E:/Bible/data/查经.js 诗篇 23:1 --对照   # 全部译本平行对照
+node E:/Bible/data/查经.js --译本            # 列出可用译本
 ```
+
+> 多译本数据由 `node data/build-versions.js <源目录>` 构建；源文件可从
+> [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases) 下载。
 
 ## 🌐 网页聊天版（Web Chat）
 
 一个「神性」风格的网页聊天界面，由 DeepSeek API 驱动，密钥只在服务端，支持流式回复与实时查经。
 
-**v2 特性**
-- ✨ **自动查经**：助手通过函数调用自动检索圣经原文，引用零编造
+**v3 特性**
+- 📖 **多译本**：和合本 / 英文 KJV / 希伯来文原文（旧约）/ 希腊文原文（新约），全局切换 + 平行对照
+- ✨ **自动查经**：助手通过函数调用自动检索圣经原文，引用零编造；问原文时自动调希伯来/希腊版本
+- 🔎 **书卷浏览**：侧栏按书卷逐章翻阅，随手收藏、点发
+- 🔖 **收藏与复制**：经文收藏持久化（本地），一键复制
+- 🌙 **日 / 夜双主题**：破晓晨光 × 夜间静谧，跟随系统偏好
 - 🛡 **危机检测**：检测自杀/自伤/家暴等信号，强制插入心理援助热线（400-161-9995）
 - 🔐 **访问码**：设置 `ACCESS_CODE` 后需输入访问码才能对话，防陌生人白嫖
-- ☀️ **明亮界面**：破晓晨光 × 鎏金 × 圣光，浮尘动画，移动端适配
 - 🔄 **不崩部署**：未配置 API Key 服务照跑，页面友好提示
 
 ```
@@ -94,9 +112,14 @@ DEEPSEEK_MODEL=deepseek-chat
 
 **查经 API**（网页内置，也可直接调用）
 ```
-GET /api/verse?q=诗篇 23:1-6     # 按卷章引用
-GET /api/verse?q=饶恕            # 关键词搜索
+GET /api/versions                    # 列出可用译本
+GET /api/verse?q=诗篇 23:1-6         # 按卷章引用（默认和合本）
+GET /api/verse?q=饶恕                # 关键词搜索（按相关性排序）
+GET /api/verse?q=约翰福音 3:16&v=cuv,kjv,tr   # 多译本平行对照
+GET /api/books?v=wlc                 # 书卷目录（原文译本只有旧约/新约）
 ```
+
+> `v` 参数：`cuv` 和合本 · `kjv` 英文 KJV · `wlc` 希伯来文原文（旧约）· `tr` 希腊文原文（新约）；多个用逗号并列。
 
 ## 蒸馏方法论（本项目怎么做的）
 
