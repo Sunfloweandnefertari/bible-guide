@@ -12,10 +12,26 @@
 <div class="lightrays"></div>
 <div class="veil"></div>
 
+<!-- SVG 图标库（内联，彻底避免缺字方框） -->
+<svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <symbol id="i-star" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.6l2.7 6.4 6.9.4-5.3 4.4 1.7 6.7L12 15.9l-6 3.6 1.7-6.7L2.4 8.4l6.9-.4z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></g></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path fill="currentColor" d="M21 14.4A9 9 0 1 1 9.6 3 7 7 0 0 0 21 14.4z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><g fill="currentColor"><rect x="3" y="6" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="16" width="18" height="2" rx="1"/></g></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></g></symbol>
+    <symbol id="i-mark" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M6 3h12v18l-6-4-6 4z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8z"/></g></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></g></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></g></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></g></symbol>
+  </defs>
+</svg>
+
 <!-- 访问码层 -->
 <div class="overlay" id="access-overlay" hidden>
   <div class="overlay-card">
-    <div class="halo small">✦</div>
+    <div class="halo small"><svg class="ic"><use href="#i-star" xlink:href="#i-star"/></svg></div>
     <h2>圣 言</h2>
     <p class="ov-sub">请输入访问码以继续</p>
     <input id="access-input" type="password" placeholder="访问码" autocomplete="off">
@@ -26,19 +42,27 @@
 
 <div class="app">
   <header>
-    <div class="halo">✦</div>
+    <div class="topbar">
+      <button class="iconbtn" id="shelf-toggle" title="书卷 / 收藏"><svg class="ic"><use href="#i-menu" xlink:href="#i-menu"/></svg></button>
+      <button class="iconbtn" id="theme-toggle" title="切换日 / 夜 静谧"><svg class="ic" id="theme-icon"><use href="#i-sun" xlink:href="#i-sun"/></svg></button>
+    </div>
+    <div class="halo"><svg class="ic"><use href="#i-star" xlink:href="#i-star"/></svg></div>
     <h1>圣 言</h1>
     <p class="en">SACRED WORD</p>
     <p class="tagline">用圣经的智慧，看人生的难处</p>
     <div class="pill">仅供参考 · 不支持迷信 · 不替代专业帮助</div>
   </header>
+  <div class="vbar">
+    <div class="vswitch" id="vswitch" role="group" aria-label="译本选择"></div>
+    <button class="vtoggle" id="vtoggle" title="同时显示其他译本作对照">对照</button>
+  </div>
   <div class="status" id="status" title="服务状态：由 /api/config 实时读取"></div>
 
   <section class="verse-day" id="verse-day">
     <div class="k">— 今日经文 —</div>
-    <p class="v" id="vd-text">“耶和华是我的牧者，我必不至缺乏。”</p>
+    <div class="vbody" id="vd-body"><div class="vtext">耶和华是我的牧者，我必不至缺乏。</div></div>
     <p class="r" id="vd-ref">诗篇 23:1</p>
-    <button class="swap" id="vd-switch" title="换一节">✦</button>
+    <button class="swap" id="vd-switch" title="换一节"><svg class="ic"><use href="#i-star" xlink:href="#i-star"/></svg></button>
   </section>
 
   <section class="chat" id="chat" aria-live="polite"></section>
@@ -47,14 +71,14 @@
     <div class="versetool" id="versetool">
       <div class="vt-row">
         <input id="vq" placeholder="查经 · 如：诗篇 23:1-6　或关键词：饶恕" spellcheck="false">
-        <button type="button" class="vt-clear" id="vclear" title="清空" hidden>✕</button>
+        <button type="button" class="vt-clear" id="vclear" title="清空" hidden><svg class="ic"><use href="#i-close" xlink:href="#i-close"/></svg></button>
         <button type="button" class="vt-btn" id="vbtn">查经</button>
       </div>
       <div class="vres" id="vres"></div>
     </div>
     <div class="inputrow">
       <textarea id="inp" rows="1" placeholder="说出你的困惑…" spellcheck="false"></textarea>
-      <button class="send" id="send" title="发送">✦</button>
+      <button class="send" id="send" title="发送"><svg class="ic"><use href="#i-send" xlink:href="#i-send"/></svg></button>
     </div>
   </form>
 
@@ -63,6 +87,41 @@
     <span class="hot">心理援助热线 400-161-9995</span> · 危急时刻请优先求助专业人士
   </footer>
 </div>
+
+<!-- 侧栏：书卷浏览 + 收藏（双页签） -->
+<div class="backdrop" id="backdrop" hidden></div>
+<aside class="shelf" id="shelf" aria-label="经文侧栏">
+  <div class="shelf-head">
+    <div class="tabs">
+      <button class="tab active" data-tab="books"><svg class="ic"><use href="#i-book" xlink:href="#i-book"/></svg>书卷</button>
+      <button class="tab" data-tab="marks"><svg class="ic"><use href="#i-mark" xlink:href="#i-mark"/></svg>收藏</button>
+    </div>
+    <button class="iconbtn" id="shelf-close" title="关闭"><svg class="ic"><use href="#i-close" xlink:href="#i-close"/></svg></button>
+  </div>
+
+  <!-- 书卷浏览 -->
+  <div class="panel on" id="panel-books">
+    <div id="books-list" class="books-list"></div>
+    <div id="book-view" class="book-view" hidden>
+      <div class="bv-head">
+        <button class="bv-back" id="bv-back"><svg class="ic"><use href="#i-chev" xlink:href="#i-chev"/></svg>返回</button>
+        <span class="bv-title" id="bv-title"></span>
+      </div>
+      <div class="bv-chaptools">
+        <button id="bv-prev" class="bv-nav">← 上一章</button>
+        <span id="bv-chaptag"></span>
+        <button id="bv-next" class="bv-nav">下一章 →</button>
+      </div>
+      <div class="bv-verses" id="bv-verses"></div>
+    </div>
+  </div>
+
+  <!-- 收藏 -->
+  <div class="panel" id="panel-marks">
+    <div id="marks-list" class="marks-list"></div>
+    <p class="marks-empty" id="marks-empty">还没有收藏，点经文旁的收藏星即可保存。</p>
+  </div>
+</aside>
 
 <script src="app.js"></script>
 </body>
