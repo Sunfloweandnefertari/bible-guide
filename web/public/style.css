@@ -231,6 +231,20 @@ h1 {
 .vtoggle:hover { border-color: var(--gold); color: var(--gold); }
 .vtoggle.on { background: var(--hover-gold); border-color: var(--gold); color: var(--gold); font-weight: 600; }
 
+/* 发送键的「停止」态 */
+.send .stop-square { width: 13px; height: 13px; border-radius: 3px; background: currentColor; display: block; }
+.send.stop { background: linear-gradient(140deg, rgba(240, 200, 115, .75), rgba(200, 150, 60, .5)); }
+.send.stop:hover { box-shadow: 0 6px 22px rgba(217, 164, 65, .6); }
+
+/* 清空对话 */
+.clear-chat {
+  margin-top: 8px; border: 1px solid var(--card-border); background: transparent;
+  color: var(--faint); border-radius: 999px; padding: 4px 14px;
+  font-size: 11px; cursor: pointer; transition: all .2s var(--ease);
+}
+.clear-chat:hover { color: #c4534f; border-color: rgba(196, 83, 79, .5); }
+.clear-chat[hidden] { display: none; }
+
 /* ---------- 平行对照 ---------- */
 .vtext { font-family: var(--serif); font-size: 19px; line-height: 1.9; color: var(--ink-soft); font-weight: 500; }
 .vtext.rtl { direction: rtl; text-align: right; font-size: 21px; }
@@ -639,9 +653,11 @@ footer {
   .verse-day .r { margin-top: 8px; font-size: 12px; }
   .verse-day .swap { right: 10px; top: 9px; width: 27px; height: 27px; }
   .verse-day .vd-actions { left: 10px; top: 9px; }
-  .vbar { margin: 14px 0 0; }
+  .vbar { margin: 14px 0 0; flex-wrap: nowrap; gap: 6px; }
+  .vswitch { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .vswitch::-webkit-scrollbar { display: none; }
   .vs-btn { padding: 6px 10px; font-size: 12px; }
-  .vtoggle { padding: 7px 11px; font-size: 12px; }
+  .vtoggle { padding: 7px 11px; font-size: 12px; flex-shrink: 0; }
 
   .chat { margin-top: 14px; gap: 12px; }
   .bubble { font-size: 14px; padding: 11px 15px; }

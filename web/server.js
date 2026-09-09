@@ -47,10 +47,19 @@ const VERSION_DEFS = [
   { id: 'tr', name: 'Textus Receptus', lang: 'grc', langName: '希腊文（原文·新约）', short: '希腊原文' },
 ];
 const VERSION_IDS = VERSION_DEFS.map(v => v.id);
-const VDIRS = [
-  path.join(__dirname, '..', 'data', 'versions'),
-  path.join(__dirname, 'data', 'versions'),
-];
+/** 从当前目录向上逐级查找 data/<sub>（兼容不同部署的根目录设置） */
+function dataDirs(sub) {
+  const out = [];
+  let d = __dirname;
+  for (let i = 0; i < 4; i++) {
+    out.push(path.join(d, 'data', sub));
+    const parent = path.dirname(d);
+    if (parent === d) break;
+    d = parent;
+  }
+  return out;
+}
+const VDIRS = dataDirs('versions');
 const vcache = new Map();
 function loadVersion(id) {
   id = String(id || '').toLowerCase();
@@ -60,12 +69,11 @@ function loadVersion(id) {
     const f = path.join(d, id + '.json');
     if (fs.existsSync(f)) { try { data = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {} break; }
   }
-  /* 兜底：老部署只拷了 data/bible_cuv.json（未跑 build-versions.js） */
+  /* 兜底：老部署只有 data/bible_cuv.json（未跑 build-versions.js） */
   if (!data && id === 'cuv') {
-    for (const c of [path.join(__dirname, '..', 'data', 'bible_cuv.json'),
-                     path.join(__dirname, 'data', 'bible_cuv.json'),
-                     path.join(__dirname, 'bible_cuv.json')]) {
-      if (fs.existsSync(c)) { try { data = JSON.parse(fs.readFileSync(c, 'utf8')); } catch {} break; }
+    for (const c of [...dataDirs(''), path.join(__dirname, 'bible_cuv.json')]) {
+      const f = c.endsWith('.json') ? c : path.join(c, 'bible_cuv.json');
+      if (fs.existsSync(f)) { try { data = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {} break; }
     }
   }
   vcache.set(id, data);

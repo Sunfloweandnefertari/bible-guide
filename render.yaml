@@ -1,0 +1,18 @@
+# Render 部署配置（Blueprint）
+# 用法：Render 控制台 → New → Blueprint → 选本仓库
+# 已有手动创建的服务不会自动套用此文件，但可照此核对设置。
+services:
+  - type: web
+    name: bible-guide
+    runtime: node
+    plan: free
+    buildCommand: ""
+    # 从仓库根启动，确保 server.js 能找到 ../data/versions（经文数据）
+    startCommand: node web/server.js
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false          # 在 Render 控制台填写，不写进仓库
+      - key: ACCESS_CODE
+        sync: false          # 可选：设置后需访问码才能对话
+      - key: RATE_PER_MIN
+        value: "20"

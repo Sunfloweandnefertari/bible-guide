@@ -176,6 +176,7 @@
   document.getElementById('verse-day').addEventListener('click', e => {
     const act = e.target.closest('.vd-act');
     if (!act) return;
+    if (!vdText) return;                              /* 经文尚未载入，忽略 */
     if (act.classList.contains('mark')) toggleMark(act.dataset.ref, vdText);
     else if (act.classList.contains('copy')) copyToClip(act.dataset.ref + ' ' + vdText, act);
   });
@@ -233,6 +234,28 @@
   const sendBtn = document.getElementById('send');
   const history = [];
   let busy = false;
+  let abortCtrl = null;
+  const HIST_KEY = 'bible_history';
+
+  function loadHistory() {
+    try { const h = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); return Array.isArray(h) ? h : []; }
+    catch { return []; }
+  }
+  function saveHistory() {
+    try { localStorage.setItem(HIST_KEY, JSON.stringify(history.slice(-40))); } catch {}
+    const clr = document.getElementById('clear-chat');
+    if (clr) clr.hidden = history.length === 0;
+  }
+
+  /** 生成中：发送键变「停止」 */
+  function setBusy(b) {
+    busy = b;
+    sendBtn.disabled = false;                       /* 生成中仍可点（用于停止） */
+    sendBtn.classList.toggle('stop', b);
+    sendBtn.title = b ? '停止生成' : '发送';
+    sendBtn.innerHTML = b ? '<span class="stop-square"></span>' : icon('send');
+  }
+  function stopGen() { if (abortCtrl) abortCtrl.abort(); }
 
   function addMsg(role, text, html) {
     const wrap = document.createElement('div');
@@ -268,29 +291,34 @@
     if (!text.trim() || busy) return;
     addMsg('user', text);
     history.push({ role: 'user', content: text });
-    busy = true; sendBtn.disabled = true;
+    saveHistory();
+    setBusy(true);
     hideChips();
     typing();
     const headers = { 'Content-Type': 'application/json' };
     if (accessCode()) headers['x-access-code'] = accessCode();
+    abortCtrl = new AbortController();
+    let acc = '', bubble = null;
     try {
-      const res = await fetch('/api/chat', { method: 'POST', headers, body: JSON.stringify({ messages: history }) });
+      const res = await fetch('/api/chat', {
+        method: 'POST', headers, signal: abortCtrl.signal,
+        body: JSON.stringify({ messages: history }),
+      });
       if (res.status === 401) {
         const j = await res.json().catch(() => ({}));
-        typingDone(); busy = false; sendBtn.disabled = false;
+        typingDone(); setBusy(false);
         if (j.needAccess) { needAccess(); return; }
       }
       if (!res.ok || !res.body) {
         let msg = '请求失败（' + res.status + '），请稍后再试。';
         try { const j = await res.json(); if (j.error) msg = j.error; } catch {}
         typingDone(); addMsg('assistant', '', `<span style="color:#c4534f">${icon('mark')} ${esc(msg)}</span>`);
-        busy = false; sendBtn.disabled = false;
+        setBusy(false);
         return;
       }
       const reader = res.body.getReader();
       const dec = new TextDecoder();
-      let buf = '', acc = '';
-      let bubble = null;
+      let buf = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -309,27 +337,41 @@
               typingDone();
               if (bubble) bubble.remove();
               addMsg('assistant', '', `<span style="color:#c4534f">${icon('mark')} ${esc(j.error)}</span>`);
-              busy = false; sendBtn.disabled = false;
+              setBusy(false);
               return;
             }
             if (j.delta) {
               acc += j.delta;
               if (!bubble) { typingDone(); bubble = addMsg('assistant', ''); }
               bubble.querySelector('.bubble').innerHTML = renderInline(acc);
-              smoothScroll();
+              smoothToast(bubble);
             }
           } catch {}
         }
       }
       typingDone();
       if (!bubble && !acc) addMsg('assistant', '（没有收到回复，请再试一次）');
-      history.push({ role: 'assistant', content: acc });
-      busy = false; sendBtn.disabled = false;
+      if (acc) { history.push({ role: 'assistant', content: acc }); saveHistory(); }
+      setBusy(false);
     } catch (e) {
       typingDone();
+      if (e.name === 'AbortError') {
+        /* 用户主动停止：保留已生成的部分，计入历史 */
+        if (acc) { history.push({ role: 'assistant', content: acc }); saveHistory(); }
+        setBusy(false);
+        return;
+      }
       addMsg('assistant', '', `<span style="color:#c4534f">${icon('mark')} 网络异常：${esc(e.message)}</span>`);
-      busy = false; sendBtn.disabled = false;
+      setBusy(false);
     }
+  }
+  /* 流式追加时的滚动：节流，避免每个字都触发平滑滚动 */
+  let toastT = 0;
+  function smoothToast() {
+    const now = Date.now();
+    if (now - toastT < 120) return;
+    toastT = now;
+    smoothScroll();
   }
 
   function autoResize() {
@@ -340,7 +382,10 @@
   inp.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(inp.value); inp.value = ''; autoResize(); }
   });
-  sendBtn.onclick = () => { send(inp.value); inp.value = ''; autoResize(); };
+  sendBtn.onclick = () => {
+    if (busy) { stopGen(); return; }
+    const v = inp.value; send(v); inp.value = ''; autoResize();
+  };
 
   /* ========== 查经工具 ========== */
   const vq = document.getElementById('vq');
@@ -417,9 +462,27 @@
     send('', { pre: '请引用这段经文并结合它回答：' + tx });
   });
 
-  /* ========== 开场白 ========== */
-  addMsg('assistant',
-    '我用圣经的智慧视角陪你聊聊。\n\n你可以说说正在经历的难处，或问我某个困惑 —— 爱、饶恕、苦难、焦虑、方向…都可以。\n\n*仅供你参考，你也可以完全保留自己的判断。*');
+  /* ========== 开场白 / 恢复历史 ========== */
+  function greet() {
+    addMsg('assistant',
+      '我用圣经的智慧视角陪你聊聊。\n\n你可以说说正在经历的难处，或问我某个困惑 —— 爱、饶恕、苦难、焦虑、方向…都可以。\n\n*仅供你参考，你也可以完全保留自己的判断。*');
+  }
+  function restoreHistory() {
+    const saved = loadHistory();
+    if (!saved.length) return false;
+    saved.forEach(m => addMsg(m.role, m.content));
+    history.push(...saved);
+    return true;
+  }
+  function clearChat() {
+    if (history.length && !confirm('清空当前对话？此操作不可恢复。')) return;
+    history.length = 0;
+    try { localStorage.removeItem(HIST_KEY); } catch {}
+    chat.innerHTML = '';
+    greet();
+    renderChips();
+    saveHistory();
+  }
 
   /* ========== 启动自检：让页面自己说出状态 ========== */
   const statusEl = document.getElementById('status');
@@ -662,6 +725,10 @@
     setVerse(vIdx);
   })();
 
-  renderChips();
   renderMarks();
+  if (!restoreHistory()) greet();
+  renderChips();
+  if (history.length) hideChips();       /* 有历史时不显示快捷 chip */
+  saveHistory();
+  document.getElementById('clear-chat').onclick = clearChat;
 })();
