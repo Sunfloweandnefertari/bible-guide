@@ -6,3 +6,8 @@
 node_modules/
 .DS_Store
 Thumbs.db
+
+# 录音与转写稿（个人/教会资料，不入库）
+recordings/
+transcripts/
+tools/bin/

@@ -12,6 +12,16 @@
     return `<svg class="ic ${cls || ''}" xmlns:xlink="http://www.w3.org/1999/xlink"><use href="#i-${name}" xlink:href="#i-${name}"/></svg>`;
   }
 
+  /* 微信 X5 等内核对 fetch 流式读取支持不全 → 自动降级为非流式 */
+  function CAN_STREAM() {
+    try {
+      return typeof window.fetch === 'function' &&
+        typeof TextDecoder === 'function' &&
+        typeof ReadableStream === 'function' &&
+        typeof window.Response !== 'undefined';
+    } catch (e) { return false; }
+  }
+
   /* ========== 主题切换（日 / 夜·静谧） ========== */
   const rootEl = document.documentElement;
   function applyTheme(t) {
@@ -83,8 +93,9 @@
     return versions.find(v => v.id === id) || { id, short: id, langName: id, lang: '', name: id };
   }
   function activeVersions() {
-    if (!compare) return [curVer];
     const all = versions.map(v => v.id);
+    /* 非对照模式也带上和合本兜底：原文译本只有旧约或只有新约 */
+    if (!compare) return curVer === 'cuv' ? ['cuv'] : [curVer, 'cuv'];
     return [curVer, ...all.filter(id => id !== curVer)];   /* 主译本在前，其余并列对照 */
   }
   function verDir(id) { return verDef(id).lang === 'he' ? 'rtl' : 'ltr'; }
@@ -94,7 +105,12 @@
     if (!ids.length) return '<div class="vtext muted">（该译本无此节经文）</div>';
     const primary = texts[curVer] !== undefined ? curVer : ids[0];
     const pd = verDef(primary);
-    let html = `<div class="vtext${pd.lang === 'he' ? ' rtl' : ''}" dir="${verDir(primary)}">${esc(texts[primary])}</div>`;
+    let html = '';
+    if (primary !== curVer) {
+      /* 所选译本没有这卷（如希腊原文查旧约）→ 明确告知，别让用户以为"库里没数据" */
+      html += `<div class="vfallback">${esc(verDef(curVer).short || curVer)} 只含${verDef(curVer).lang === 'he' ? '旧约' : '新约'}，此卷已显示 ${esc(pd.short)}</div>`;
+    }
+    html += `<div class="vtext${pd.lang === 'he' ? ' rtl' : ''}" dir="${verDir(primary)}">${esc(texts[primary])}</div>`;
     if (compare) {
       const others = ids.filter(id => id !== primary);
       if (others.length) {
@@ -245,6 +261,8 @@
     try { localStorage.setItem(HIST_KEY, JSON.stringify(history.slice(-40))); } catch {}
     const clr = document.getElementById('clear-chat');
     if (clr) clr.hidden = history.length === 0;
+    const app = document.querySelector('.app');
+    if (app) app.classList.toggle('chatting', history.length > 0);   /* 有对话就收起装饰头部 */
   }
 
   /** 生成中：发送键变「停止」 */
@@ -297,19 +315,47 @@
     typing();
     const headers = { 'Content-Type': 'application/json' };
     if (accessCode()) headers['x-access-code'] = accessCode();
-    abortCtrl = new AbortController();
+    const canStream = CAN_STREAM();
+    abortCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     let acc = '', bubble = null;
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST', headers, signal: abortCtrl.signal,
-        body: JSON.stringify({ messages: history }),
-      });
+      const fetchOpts = {
+        method: 'POST', headers,
+        body: JSON.stringify({ messages: history, stream: canStream }),
+      };
+      if (abortCtrl) fetchOpts.signal = abortCtrl.signal;
+      const res = await fetch('/api/chat', fetchOpts);
       if (res.status === 401) {
         const j = await res.json().catch(() => ({}));
         typingDone(); setBusy(false);
         if (j.needAccess) { needAccess(); return; }
       }
-      if (!res.ok || !res.body) {
+      const ctype = (res.headers && res.headers.get) ? (res.headers.get('content-type') || '') : '';
+
+      /* —— 非流式（微信等内核不支持流式读取时）—— */
+      if (ctype.indexOf('application/json') >= 0) {
+        const j = await res.json().catch(() => ({}));
+        typingDone();
+        if (j.crisis) addCrisis(j.crisis);
+        if (j.error) {
+          addMsg('assistant', '', `<span style="color:#c4534f">${icon('mark')} ${esc(j.error)}</span>`);
+          setBusy(false); return;
+        }
+        acc = j.text || '';
+        if (acc) {
+          bubble = addMsg('assistant', '');
+          bubble.querySelector('.bubble').innerHTML = renderInline(acc);
+          history.push({ role: 'assistant', content: acc }); saveHistory();
+        } else {
+          addMsg('assistant', '（没有收到回复，请再试一次）');
+        }
+        smoothScroll();
+        setBusy(false);
+        return;
+      }
+
+      /* —— 流式 —— */
+      if (!res.ok || !res.body || typeof res.body.getReader !== 'function') {
         let msg = '请求失败（' + res.status + '），请稍后再试。';
         try { const j = await res.json(); if (j.error) msg = j.error; } catch {}
         typingDone(); addMsg('assistant', '', `<span style="color:#c4534f">${icon('mark')} ${esc(msg)}</span>`);

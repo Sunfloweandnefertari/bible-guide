@@ -200,7 +200,17 @@ function searchBible(q, vids) {
   const ref = resolveRef(q);
   if (ref) {
     /* 选一个含该卷的译本作为主译本（原文译本只有旧约或只有新约） */
-    const host = loaded.find(x => x.data.books[ref.idx]);
+    let host = loaded.find(x => x.data.books[ref.idx]);
+    /* 所选译本都没有该卷（如希腊原文只有新约、却查了旧约）→ 自动补和合本兜底 */
+    if (!host && !loaded.some(x => x.id === 'cuv')) {
+      const cuvData = loadVersion('cuv');
+      if (cuvData && cuvData.books[ref.idx]) {
+        const def = VERSION_DEFS.find(v => v.id === 'cuv');
+        host = { id: 'cuv', def, data: cuvData };
+        loaded.push(host);
+        versions.push({ id: 'cuv', name: def.name, langName: def.langName, short: def.short, lang: def.lang });
+      }
+    }
     if (host) {
       const chData = host.data.books[ref.idx].chapters[ref.chapter];
       if (chData) {
@@ -347,6 +357,8 @@ async function chat(req, res) {
   const userMsgs = Array.isArray(msg.messages) ? msg.messages.slice(-20) : [];
   const crisis = userMsgs.some(m => m.role === 'user' && checkCrisis(m.content));
   const messages = [{ role: 'system', content: SYSTEM }, ...userMsgs];
+  /* 非流式：微信 X5 等内核不支持 fetch 流式读取，前端会显式传 stream:false */
+  const wantStream = msg.stream !== false;
 
   /* Phase 1：非流式，先判断是否需要调用工具 */
   let finalMessages = messages;
@@ -378,6 +390,11 @@ async function chat(req, res) {
         }
       } else if (m1 && m1.content) {
         /* 没用工具：直接把完整回答发出去 */
+        if (!wantStream) {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ text: m1.content, crisis: crisis ? CRISIS_NOTE : undefined }));
+          return;
+        }
         res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache' });
         if (crisis) res.write(`data: ${JSON.stringify({ crisis: CRISIS_NOTE })}\n\n`);
         res.write(`data: ${JSON.stringify({ delta: m1.content })}\n\n`);
@@ -387,6 +404,24 @@ async function chat(req, res) {
       }
     }
   } catch {}
+
+  /* Phase 2a：非流式（微信 X5 等内核不支持流式读取） */
+  if (!wantStream) {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    try {
+      const r2 = await callDeepSeek(finalMessages, {});
+      if (!r2.ok) {
+        res.end(JSON.stringify({ error: '模型服务暂不可用（' + r2.status + '），请稍后再试。' }));
+        return;
+      }
+      const j = await r2.json();
+      const t = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+      res.end(JSON.stringify({ text: t || '（没有收到回复，请再试一次）', crisis: crisis ? CRISIS_NOTE : undefined }));
+    } catch {
+      res.end(JSON.stringify({ error: '网络连接异常，请稍后再试。' }));
+    }
+    return;
+  }
 
   /* Phase 2：流式返回最终回答 */
   res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
