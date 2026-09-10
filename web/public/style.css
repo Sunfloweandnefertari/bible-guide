@@ -593,6 +593,7 @@ footer .hot { color: var(--gold-dim); }
 
 /* 书卷列表 */
 .books-list { display: flex; flex-direction: column; gap: 3px; }
+.books-list[hidden] { display: none; }   /* 必须显式写：否则被上面的 display:flex 覆盖 */
 .bk-item {
   display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px;
   cursor: pointer; transition: all .18s var(--ease); color: var(--ink-soft);
@@ -612,14 +613,22 @@ footer .hot { color: var(--gold-dim); }
 }
 .bv-back:hover { background: var(--hover-gold); color: var(--gold); }
 .bv-title { font-family: var(--serif); font-size: 17px; color: var(--ink); }
-.bv-chaptools { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 10px; }
+.bv-chaptools { display: flex; align-items: center; gap: 8px; margin: 6px 0 10px; }
 .bv-nav {
   border: 1px solid var(--card-border); background: var(--btn-bg); color: var(--gold);
-  border-radius: 8px; padding: 5px 11px; font-size: 12px; cursor: pointer; transition: all .2s var(--ease);
+  border-radius: 8px; padding: 6px 12px; font-size: 14px; line-height: 1;
+  cursor: pointer; transition: all .2s var(--ease); flex-shrink: 0;
 }
 .bv-nav:hover { background: var(--hover-gold); }
 .bv-nav:disabled { opacity: .35; cursor: not-allowed; }
-#bv-chaptag { font-size: 12.5px; color: var(--dim); letter-spacing: .05em; }
+.bv-select {
+  flex: 1; min-width: 0;
+  border: 1px solid var(--card-border); background: var(--item-bg); color: var(--ink-soft);
+  border-radius: 8px; padding: 6px 10px; font-size: 13px; font-family: var(--sans);
+  cursor: pointer; outline: none; -webkit-appearance: none; appearance: none; text-align: center;
+}
+.bv-select:focus { border-color: var(--gold); }
+.bv-select option { background: var(--card-solid); color: var(--ink); }
 .bv-verses { display: flex; flex-direction: column; gap: 4px; }
 .bv-v {
   padding: 8px 10px; border-radius: 9px; font-family: var(--serif); font-size: 14px; line-height: 1.8;

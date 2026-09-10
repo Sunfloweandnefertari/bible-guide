@@ -679,17 +679,30 @@
   }
   async function openBook(b) {
     curBook = b; curCh = 1;
+    booksList.hidden = true;          /* 关键：隐藏 66 卷列表，否则章节被挤到列表下方、看起来像没反应 */
     bookView.hidden = false;
     document.getElementById('bv-title').textContent = b.book;
+    /* 生成章号下拉，可直接跳转任意章 */
+    const sel = document.getElementById('bv-chapselect');
+    sel.innerHTML = '';
+    for (let i = 1; i <= b.chapters; i++) {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = `第 ${i} 章`;
+      sel.appendChild(o);
+    }
     await loadChapter();
   }
   async function loadChapter() {
     if (!curBook) return;
-    document.getElementById('bv-chaptag').textContent = `第 ${curCh} 章 / 共 ${curBook.chapters} 章`;
+    const sel = document.getElementById('bv-chapselect');
+    if (sel) sel.value = String(curCh);
     document.getElementById('bv-prev').disabled = curCh <= 1;
     document.getElementById('bv-next').disabled = curCh >= curBook.chapters;
     const box = document.getElementById('bv-verses');
     box.innerHTML = '<div class="hint">加载经文…</div>';
+    const panel = document.getElementById('panel-books');
+    if (panel) panel.scrollTop = 0;    /* 换章后回到顶部 */
     try {
       const j = await fetchVerses(curBook.book + ' ' + curCh);
       if (!j || j.type !== 'verses') { box.innerHTML = '<div class="hint">未能加载该章</div>'; return; }
@@ -723,9 +736,16 @@
       });
     } catch { box.innerHTML = '<div class="hint">加载失败</div>'; }
   }
-  document.getElementById('bv-back').onclick = () => { bookView.hidden = true; };
+  document.getElementById('bv-back').onclick = () => {
+    bookView.hidden = true;
+    booksList.hidden = false;          /* 返回书卷列表 */
+  };
   document.getElementById('bv-prev').onclick = () => { if (curCh > 1) { curCh--; loadChapter(); } };
   document.getElementById('bv-next').onclick = () => { if (curBook && curCh < curBook.chapters) { curCh++; loadChapter(); } };
+  document.getElementById('bv-chapselect').onchange = e => {
+    const n = Number(e.target.value);
+    if (n && n !== curCh) { curCh = n; loadChapter(); }
+  };
 
   /* ---------- 译本切换器 ---------- */
   function renderVSwitch() {
@@ -755,8 +775,9 @@
   function refreshAll() {
     setVerse(vIdx);
     if (vres.classList.contains('show') && vq.value.trim()) lookup();
-    if (!bookView.hidden) bookView.hidden = true;              /* 译本变了，原章节可能不在该译本中（原文只有旧约/新约） */
-    if (booksList.querySelector('.bk-item')) loadBooks();      /* 书卷清单随译本变化 */
+    /* 译本变了，原章节可能不在该译本中（原文只有旧约/新约）→ 回到书卷列表 */
+    if (!bookView.hidden) { bookView.hidden = true; booksList.hidden = false; }
+    if (booksList.querySelector('.bk-item')) loadBooks();
   }
 
   /* ---------- 启动：拉译本清单 → 渲染切换器 → 首次取经文 ---------- */
