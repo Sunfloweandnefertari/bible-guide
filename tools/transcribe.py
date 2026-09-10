@@ -32,6 +32,13 @@ try:
 except ImportError:
     sys.exit("缺少依赖：pip install requests")
 
+# Windows 控制台默认 GBK，输出 ✓ 等字符会报错 —— 统一切到 UTF-8
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 API_URL = "https://api.siliconflow.cn/v1/audio/transcriptions"
 DEFAULT_MODEL = "FunAudioLLM/SenseVoiceSmall"
 AUDIO_EXT = {".m4a", ".mp3", ".wav", ".flac", ".aac", ".ogg", ".opus", ".wma", ".amr"}
@@ -91,6 +98,10 @@ def split_audio(ffmpeg, src, outdir, chunk_sec, dur):
 
 
 # ---------- 调 API ----------
+class TooLarge(Exception):
+    """服务端因文件过大/过长而拒收（需要切片）"""
+
+
 def transcribe_chunk(key, model, path, retries=4):
     for attempt in range(retries):
         try:
@@ -100,7 +111,7 @@ def transcribe_chunk(key, model, path, retries=4):
                     headers={"Authorization": "Bearer " + key},
                     files={"file": (os.path.basename(path), f, "audio/mpeg")},
                     data={"model": model},
-                    timeout=900,
+                    timeout=1800,
                 )
             if r.status_code == 200:
                 j = r.json()
@@ -110,6 +121,9 @@ def transcribe_chunk(key, model, path, retries=4):
                 print(f"      HTTP {r.status_code}，{wait}s 后重试…")
                 time.sleep(wait)
                 continue
+            if r.status_code == 413 or (r.status_code == 400 and
+                                        re.search(r"size|large|duration|length|limit", r.text, re.I)):
+                raise TooLarge(f"HTTP {r.status_code}: {r.text[:160]}")
             raise RuntimeError(f"HTTP {r.status_code}: {r.text[:300]}")
         except requests.RequestException as e:
             wait = 2 ** attempt
@@ -125,7 +139,8 @@ def main():
     ap.add_argument("--out", default="transcripts", help="文字稿输出目录（默认 transcripts/）")
     ap.add_argument("--chunk-sec", type=int, default=1200, help="切片时长秒数（默认 1200 = 20 分钟）")
     ap.add_argument("--model", default=DEFAULT_MODEL)
-    ap.add_argument("--max-mb", type=float, default=20, help="单片大小上限 MB，超过则强制切片")
+    ap.add_argument("--max-mb", type=float, default=20, help="切片大小上限 MB（仅在需要切片时生效）")
+    ap.add_argument("--force-chunk", action="store_true", help="强制切片（默认先试整文件上传）")
     args = ap.parse_args()
 
     load_env()
@@ -133,9 +148,7 @@ def main():
     if not key:
         sys.exit("缺少 SILICONFLOW_API_KEY —— 请在仓库根 .env 里写：SILICONFLOW_API_KEY=sk-xxxx")
 
-    ffmpeg = find_ffmpeg()
-    if not ffmpeg:
-        sys.exit("找不到 ffmpeg —— 请先运行：pip install imageio-ffmpeg")
+    ffmpeg = find_ffmpeg()          # 可选：仅在服务端拒收整文件时才需要切片
 
     src_dir = os.path.abspath(args.src)
     out_dir = os.path.abspath(args.out)
@@ -162,11 +175,20 @@ def main():
             continue
 
         size_mb = os.path.getsize(src) / 1024 / 1024
-        dur = probe_duration(ffmpeg, src)
+        dur = probe_duration(ffmpeg, src) if ffmpeg else None   # ffmpeg 可选，缺失时跳过时长探测
         print(f"[{idx}/{len(files)}] {name}  {size_mb:.0f} MB  时长 {fmt_hms(dur)}")
 
         try:
-            if dur and dur > args.chunk_sec or size_mb > args.max_mb:
+            text = ""
+            if not args.force_chunk:
+                print("    整文件上传转写…")
+                try:
+                    text = transcribe_chunk(key, args.model, src)
+                except TooLarge as e:
+                    print(f"    服务端拒收整文件（{e}）→ 改为切片")
+            if not text:
+                if not ffmpeg:
+                    raise RuntimeError("需要切片，但找不到 ffmpeg —— 请运行：pip install imageio-ffmpeg")
                 parts = []
                 for i, chunk in split_audio(ffmpeg, src, tmp_dir, args.chunk_sec, dur or 0):
                     csize = os.path.getsize(chunk) / 1024 / 1024
@@ -175,9 +197,6 @@ def main():
                     os.remove(chunk)                      # 转完即删，控制本地占用
                     time.sleep(0.6)                       # 避开 QPS 限流
                 text = "\n\n".join(p for p in parts if p)
-            else:
-                print("    整文件转写…")
-                text = transcribe_chunk(key, args.model, src)
 
             if not text:
                 raise RuntimeError("返回为空")
