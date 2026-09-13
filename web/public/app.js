@@ -651,7 +651,16 @@
   /* ========== 侧栏：书卷 / 收藏 ========== */
   const shelf = document.getElementById('shelf');
   const backdrop = document.getElementById('backdrop');
-  const openShelf = () => { shelf.classList.add('on'); backdrop.hidden = false; requestAnimationFrame(() => backdrop.classList.add('on')); };
+  const openShelf = () => {
+    shelf.classList.add('on'); backdrop.hidden = false;
+    requestAnimationFrame(() => backdrop.classList.add('on'));
+    /* 默认页签是「书卷」，但书卷此前只在你点页签时才加载 → 直接打开会是空列表 */
+    if (document.getElementById('panel-books').classList.contains('on')) {
+      if (!booksList.querySelector('.bk-item')) loadBooks();
+    } else {
+      renderMarks();
+    }
+  };
   const closeShelf = () => {
     shelf.classList.remove('on'); backdrop.classList.remove('on');
     setTimeout(() => { backdrop.hidden = true; }, 300);
