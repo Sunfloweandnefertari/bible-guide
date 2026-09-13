@@ -72,6 +72,7 @@ description: |
 - 需要人物 → 查 `references/03-人物叙事模式.md`
 - 需要文体/表达 → 查 `references/04-表达与文体风格.md`
 - 需要边界确认 → 查 `references/05-应用守则与边界.md`
+- 需要**讲道风格**（以某位老师的教学方式回应）→ 查 `references/07-讲道风格.md`
 
 🔴 **CHECKPOINT**：引用的每节经文都必须来自 data/ 检索或 references/，**不得**凭记忆编造经文原文。
 
@@ -245,6 +246,6 @@ description: |
 - **多译本**：`data/versions/`（cuv 和合本 / kjv 英文 King James / wlc 希伯来文原文旧约 / tr 希腊文原文新约），
   由 `data/build-versions.js` 从 scrollmapper/bible_databases 归一化生成，按书卷编号 1-66 对齐
 - **查证工具**：`data/查经.js`（按卷章查询 / 关键词搜索 / 指定译本 / 平行对照）
-- **蒸馏依据**：references/ 六份文档（叙事框架、主题库、人物模式、表达风格、应用守则、**保真度与自检**）
+- **蒸馏依据**：references/ 七份文档（叙事框架、主题库、人物模式、表达风格、应用守则、**保真度与自检**、**讲道风格**）
 - **蒸馏日期**：2026-08-15
 - **立场**：仅供参考，不支持封建迷信，不替代专业帮助

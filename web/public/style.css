@@ -149,6 +149,22 @@ header { text-align: center; padding: 8px 0 4px; position: relative; flex-shrink
   position: absolute; top: 6px; left: 0; right: 0;
   display: flex; justify-content: space-between; align-items: center;
 }
+.topright { display: flex; align-items: center; gap: 8px; }
+.stylebtn {
+  height: 40px; padding: 0 13px; flex-shrink: 0;
+  display: inline-flex; align-items: center;
+  border: 1px solid var(--card-border);
+  background: var(--btn-bg);
+  color: var(--gold-dim);
+  border-radius: 12px; cursor: pointer;
+  font-size: 12.5px; font-family: var(--sans); white-space: nowrap;
+  transition: all .25s var(--ease);
+  backdrop-filter: blur(8px);
+}
+.stylebtn:hover { background: var(--hover-gold); color: var(--gold); }
+.stylebtn:active { transform: scale(.95); }
+.stylebtn.on { background: var(--hover-gold); border-color: var(--gold); color: var(--gold); font-weight: 600; }
+.stylebtn[hidden] { display: none; }
 .iconbtn {
   width: 40px; height: 40px; flex-shrink: 0;
   display: grid; place-items: center;
@@ -707,6 +723,15 @@ footer {
   .iconbtn { width: 36px; height: 36px; }
   footer { font-size: 10.5px; }
   .chip { font-size: 12px; padding: 6px 11px; }
+}
+
+/* 风格切换提示 */
+.msg.style-note { align-self: center; max-width: 90%; animation: none; }
+.msg.style-note .bubble {
+  background: var(--hover-gold); border: 1px dashed var(--card-border);
+  border-left: 1px dashed var(--card-border); border-radius: 999px;
+  font-size: 12px; color: var(--gold-dim); padding: 6px 16px; text-align: center;
+  box-shadow: none;
 }
 
 /* 老内核不支持 flex gap → 用 margin 兜底，避免消息全挤在一起 */

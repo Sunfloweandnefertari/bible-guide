@@ -6,6 +6,37 @@
   const THEME_KEY = 'bible_theme';
   const MARKS_KEY = 'bible_bookmarks';
 
+  /* ========== 回答风格（智慧视角 / 讲道风格） ========== */
+  const STYLE_KEY = 'bible_style';
+  let styles = [];
+  let curStyle = localStorage.getItem(STYLE_KEY) || 'wisdom';
+  function styleDef(id) {
+    return styles.find(s => s.id === id) || { id, name: id === 'preach' ? '讲道风格' : '智慧视角' };
+  }
+  function renderStyleBtn() {
+    const b = document.getElementById('style-toggle');
+    if (!b) return;
+    const has = styles.length > 1;                 /* 只有一种风格时不显示切换 */
+    b.hidden = !has;
+    if (!has) return;
+    b.textContent = styleDef(curStyle).name;
+    b.classList.toggle('on', curStyle !== (styles[0] && styles[0].id));
+    b.title = '回答风格：' + styles.map(s => s.name).join(' / ') + '（点击切换）';
+    b.onclick = () => {
+      const i = styles.findIndex(s => s.id === curStyle);
+      const next = styles[(i + 1) % styles.length];
+      curStyle = next.id;
+      localStorage.setItem(STYLE_KEY, curStyle);
+      renderStyleBtn();
+      /* 在对话里留一条轻提示，让用户知道回答方式变了（不计入上下文历史） */
+      const wrap = document.createElement('div');
+      wrap.className = 'msg assistant style-note';
+      wrap.innerHTML = `<div class="bubble">已切换回答方式：<b>${esc(next.name)}</b>${next.desc ? ' · ' + esc(next.desc) : ''}</div>`;
+      document.getElementById('chat').appendChild(wrap);
+      smoothScroll();
+    };
+  }
+
   /* ========== 图标 helper ========== */
   function icon(name, cls) {
     /* 同时带 href 与 xlink:href，兼容旧 WebView / Safari */
@@ -321,7 +352,7 @@
     try {
       const fetchOpts = {
         method: 'POST', headers,
-        body: JSON.stringify({ messages: history, stream: canStream }),
+        body: JSON.stringify({ messages: history, stream: canStream, style: curStyle }),
       };
       if (abortCtrl) fetchOpts.signal = abortCtrl.signal;
       const res = await fetch('/api/chat', fetchOpts);
@@ -786,6 +817,12 @@
       const arr = await fetch('/api/versions').then(r => r.json());
       if (Array.isArray(arr) && arr.length) versions = arr;
     } catch {}
+    try {
+      const st = await fetch('/api/styles').then(r => r.json());
+      if (Array.isArray(st) && st.length) styles = st;
+    } catch {}
+    if (!styles.some(s => s.id === curStyle)) curStyle = styles[0] ? styles[0].id : 'wisdom';
+    renderStyleBtn();
     if (!versions.length) versions = [{ id: 'cuv', short: '和合本', langName: '中文', lang: 'zh', name: '和合本' }];
     if (!versions.some(v => v.id === curVer)) curVer = versions[0].id;
     renderVSwitch();

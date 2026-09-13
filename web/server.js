@@ -36,8 +36,25 @@ const PORT = Number(process.env.PORT) || 8787;
 const ACCESS_CODE = process.env.ACCESS_CODE || '';
 const RATE_PER_MIN = Number(process.env.RATE_PER_MIN) || 20;
 
-let SYSTEM = '';
-try { SYSTEM = fs.readFileSync(path.join(__dirname, 'context', 'system-prompt.md'), 'utf8'); } catch {}
+/* ---------- 回答风格（多套 system prompt，可切换） ---------- */
+const STYLES = {
+  wisdom: { id: 'wisdom', name: '智慧视角', file: 'system-prompt.md', desc: '以圣经智慧回应的顾问' },
+  preach: { id: 'preach', name: '讲道风格', file: 'preach-style.md', desc: '以某位老师的讲道方式回应（只学方式，不冒充本人）' },
+};
+const styleCache = new Map();
+function loadStyle(id) {
+  id = STYLES[id] ? id : 'wisdom';
+  if (styleCache.has(id)) return styleCache.get(id);
+  let txt = '';
+  try { txt = fs.readFileSync(path.join(__dirname, 'context', STYLES[id].file), 'utf8'); } catch {}
+  styleCache.set(id, txt);
+  return txt;
+}
+function listStyles() {
+  return Object.values(STYLES).filter(s => loadStyle(s.id)).map(s => ({ id: s.id, name: s.name, desc: s.desc }));
+}
+/* 兼容旧变量名：默认风格的提示词 */
+let SYSTEM = loadStyle('wisdom');
 
 /* ---------- 多译本注册表 ---------- */
 const VERSION_DEFS = [
@@ -356,7 +373,8 @@ async function chat(req, res) {
 
   const userMsgs = Array.isArray(msg.messages) ? msg.messages.slice(-20) : [];
   const crisis = userMsgs.some(m => m.role === 'user' && checkCrisis(m.content));
-  const messages = [{ role: 'system', content: SYSTEM }, ...userMsgs];
+  const sysPrompt = loadStyle(msg.style) || SYSTEM;      /* 按请求切换回答风格 */
+  const messages = [{ role: 'system', content: sysPrompt }, ...userMsgs];
   /* 非流式：微信 X5 等内核不支持 fetch 流式读取，前端会显式传 stream:false */
   const wantStream = msg.stream !== false;
 
@@ -478,6 +496,12 @@ function versionsAPI(req, res) {
   res.end(JSON.stringify(listVersions()));
 }
 
+/* ---------- 回答风格列表接口 ---------- */
+function stylesAPI(req, res) {
+  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(listStyles()));
+}
+
 /* ---------- 配置接口（让页面自报状态） ---------- */
 function configAPI(req, res) {
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -504,6 +528,7 @@ const server = http.createServer((req, res) => {
     if (req.url.startsWith('/api/chat')) return chat(req, res);
     if (req.url.startsWith('/api/verse')) return verseAPI(req, res);
     if (req.url.startsWith('/api/versions')) return versionsAPI(req, res);
+    if (req.url.startsWith('/api/styles')) return stylesAPI(req, res);
     if (req.url.startsWith('/api/config')) return configAPI(req, res);
     if (req.url.startsWith('/api/books')) return booksAPI(req, res);
     if (req.method === 'GET') return serveStatic(req, res);
