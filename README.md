@@ -1,5 +1,10 @@
 # 圣经 · 智慧视角（Bible Perspective）
 
+### 👉 [**点这里直接使用（手机/电脑均可）**](https://bible-guide-xn3k.onrender.com) 👈
+
+> 手机上打开后，可用浏览器菜单「**添加到主屏幕**」，之后就像 App 一样一点即用。
+> 免费实例首次访问可能需要等 20-30 秒唤醒，请稍候。
+
 一个把《圣经》蒸馏成 **Skill + Agent** 的开源项目：用圣经的叙事框架、主题智慧与人物叙事，回应人生困惑。
 
 > ⚠️ **立场声明**：仅供参考，**不支持封建迷信**，不替代医疗/心理/法律等专业帮助，尊重一切信仰立场。
@@ -120,6 +125,8 @@ PORT=8787
 ```
 
 **在线部署（任一平台）**
+> 本仓库的线上实例：<https://bible-guide-xn3k.onrender.com>（Render 免费档，配置文件见 `render.yaml`）
+
 - **Render**（推荐，免费）：
   - 方式一（Blueprint，推荐）：Render 控制台 → New → **Blueprint** → 选本仓库，仓库内的 `render.yaml` 会自动配好（根目录=仓库根、启动命令 `node web/server.js`）
   - 方式二（手动）：新建 Web Service → 根目录留空（仓库根）→ Build Command 留空 → Start Command `npm start` → 环境变量填 `DEEPSEEK_API_KEY`
